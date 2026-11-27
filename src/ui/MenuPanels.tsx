@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { T, TBadge, TButton } from '../i18n/T';
 import { UI, DAILY_LABELS, STAT_LABELS } from '../i18n/ui';
 import { useStore } from '../game/store';
-import { game, levelFromXp, ACHIEVEMENTS, resetGame } from '../game/state';
+import { game, levelFromXp, ACHIEVEMENTS, resetGame, newGame } from '../game/state';
 import { settings, type Quality } from '../game/settings';
 import { MISSIONS, CHAPTERS } from '../game/data/missions';
 import { MINIGAMES } from '../game/data/minigames';
 import { TOPICS } from '../game/data/grammar';
 import { cityById } from '../game/data/places';
-import { isAvailable, startMinigame } from '../game/controller';
+import { isAvailable, startMinigame, queueMinigame } from '../game/controller';
+import { sfx } from '../game/world/Audio';
 import { MgIcon } from './minigames';
 import { openModal, closeModal, ui } from '../game/ui';
 import { Engine } from '../game/world/Engine';
@@ -346,9 +347,14 @@ export function MinigamesPanel({ inMenu }: { inMenu?: boolean }) {
               <TButton
                 {...UI.play}
                 className="sm primary"
-                disabled={inMenu && m.kind === '3d'}
                 onClick={() => {
-                  if (inMenu) openModal({ type: 'minigame', id: m.id });
+                  if (inMenu && m.kind === '3d') {
+                    // load the 3D world first, then start the game there
+                    if (!game.get().started) game.set({ ...newGame(), activeMission: null });
+                    queueMinigame(m.id);
+                    sfx.ensure();
+                    ui.set({ screen: 'game', modal: null });
+                  } else if (inMenu) openModal({ type: 'minigame', id: m.id });
                   else startMinigame(m.id);
                 }}
               />

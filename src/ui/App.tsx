@@ -5,7 +5,7 @@ import { useStore } from '../game/store';
 import { ui, closeModal, openModal } from '../game/ui';
 import { game, hasSave, newGame, saveNow } from '../game/state';
 import { Engine, hud } from '../game/world/Engine';
-import { runner, startMission, nextAvailable } from '../game/controller';
+import { runner, startMission, nextAvailable, takePendingMinigame, startMinigame } from '../game/controller';
 import { sfx } from '../game/world/Audio';
 import { speak, RAZ_VOICE } from '../i18n/speech';
 import { settings } from '../game/settings';
@@ -163,6 +163,11 @@ function GameView() {
       if (!alive) return;
       if (settings.get().autoSpeak) speak('¡Hola! Soy Raz, el número siete. ¡Empieza la aventura!', RAZ_VOICE);
       runner.attach(eng);
+      const mg = takePendingMinigame();
+      if (mg) {
+        setTimeout(() => startMinigame(mg), 600);
+        return;
+      }
       if (!game.get().activeMission && !game.get().missionsDone.length && game.get().started) {
         const n = nextAvailable();
         if (n) startMission(n.id);

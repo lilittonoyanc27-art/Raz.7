@@ -870,6 +870,17 @@ function onKey(code: string) {
 
 // --------------------------------------------------------------------------
 // minigames
+/** A 3D minigame chosen in the main menu waits here until the world is loaded. */
+let pendingMinigame: string | null = null;
+export function queueMinigame(id: string) {
+  pendingMinigame = id;
+}
+export function takePendingMinigame() {
+  const id = pendingMinigame;
+  pendingMinigame = null;
+  return id;
+}
+
 export function startMinigame(id: string) {
   const mg = MINIGAMES.find((m) => m.id === id);
   const e = Engine.current;
