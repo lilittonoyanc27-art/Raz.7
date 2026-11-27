@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { T, TBadge, TButton, SpeakIcon } from '../i18n/T';
 import { UI } from '../i18n/ui';
-import { speak } from '../i18n/speech';
+import { speak, RAZ_VOICE } from '../i18n/speech';
 import { useStore } from '../game/store';
 import { ui, closeModal, openModal } from '../game/ui';
 import { game, toast, addStat, reward, saveNow, recordAnswer, type StatKey, type CityId } from '../game/state';
@@ -948,7 +948,7 @@ function PickModal({ id }: { id: string }) {
     if (o.ok) {
       setDone(true);
       sfx.ok();
-      speak(o.es, { voice: 1 });
+      speak(o.es, RAZ_VOICE);
       addToBasket(id);
       setTimeout(() => closeModal(), 1300);
     } else sfx.bad();

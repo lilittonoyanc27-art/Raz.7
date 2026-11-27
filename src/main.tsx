@@ -1,6 +1,15 @@
 import { createRoot } from 'react-dom/client';
 import App from './ui/App';
 import './styles.css';
+import { unlockSpeech } from './i18n/speech';
+import { sfx } from './game/world/Audio';
+
+// browsers only allow sound/speech after the first user gesture
+const unlock = () => {
+  unlockSpeech();
+  sfx.ensure();
+};
+for (const ev of ['pointerdown', 'keydown', 'touchstart'] as const) window.addEventListener(ev, unlock, { capture: true, passive: true });
 
 createRoot(document.getElementById('root')!).render(<App />);
 

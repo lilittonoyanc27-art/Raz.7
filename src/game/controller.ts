@@ -360,6 +360,7 @@ class Runner {
   private navPendingSince = 0;
   private navLastSpeak = 0;
   private lastStepSpoken = '';
+  private firstLine = true;
 
   private sayToRaz(tr: Tr) {
     if (!settings.get().navVoice) return;
@@ -371,9 +372,12 @@ class Runner {
     const hy = useName ? 'Ռազ, ' + tr.hy : tr.hy;
     missionHud.set({ nav: { es, hy } });
     this.navLastSpeak = performance.now();
+    // the first line waits for RAZ's greeting at the start of the game
+    const delay = this.firstLine ? 4200 : 700;
+    this.firstLine = false;
     setTimeout(() => {
       if (!this.eng?.paused) speak(es);
-    }, 700);
+    }, delay);
   }
 
   private navigate() {

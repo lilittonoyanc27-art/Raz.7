@@ -7,6 +7,8 @@ import { game, hasSave, newGame, saveNow } from '../game/state';
 import { Engine, hud } from '../game/world/Engine';
 import { runner, startMission, nextAvailable } from '../game/controller';
 import { sfx } from '../game/world/Audio';
+import { speak, RAZ_VOICE } from '../i18n/speech';
+import { settings } from '../game/settings';
 import { Icon } from './icons';
 import { Hud } from './Hud';
 import { MobileControls } from './MobileControls';
@@ -159,6 +161,7 @@ function GameView() {
     let alive = true;
     eng.start(ref.current!).then(() => {
       if (!alive) return;
+      if (settings.get().autoSpeak) speak('¡Hola! Soy Raz, el número siete. ¡Empieza la aventura!', RAZ_VOICE);
       runner.attach(eng);
       if (!game.get().activeMission && !game.get().missionsDone.length && game.get().started) {
         const n = nextAvailable();

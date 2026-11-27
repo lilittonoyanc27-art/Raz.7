@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { T, TBadge, SpeakIcon } from '../i18n/T';
 import { UI } from '../i18n/ui';
-import { speak, stopSpeaking } from '../i18n/speech';
+import { speak, stopSpeaking, RAZ_VOICE } from '../i18n/speech';
 import { npcById, type Exchange } from '../game/data/npcs';
 import { shuffle } from '../game/data/grammar';
 import { recordAnswer, game, reward, checkAchievements } from '../game/state';
@@ -154,14 +154,21 @@ function ExchangeView({ ex, say, onNext }: { ex: Exchange; say: (t: string, slow
   const [result, setResult] = useState<null | { ok: boolean; correct: string; correctHy?: string }>(null);
   const topic = ex.topic ?? 'conversación';
 
-  const finish = (ok: boolean, correct: Tr) => {
+  const finish = (ok: boolean, correct: Tr, said?: string) => {
     setResult({ ok, correct: correct.es, correctHy: correct.hy });
     setReveal(true);
     recordAnswer(ok, { es: correct.es, hy: correct.hy, topic, explain: ex.explain?.es });
-    if (ok) {
-      sfx.ok();
-      if (ex.reply && settings.get().autoSpeak) setTimeout(() => say(ex.reply!.es), 300);
-    } else sfx.bad();
+    if (ok) sfx.ok();
+    else sfx.bad();
+    if (!settings.get().autoSpeak) return;
+    // RAZ says his answer aloud, then the other person reacts
+    const razLine = (said ?? '').replace(/^—\s*/, '').trim();
+    const after = () => {
+      if (ok && ex.reply) say(ex.reply.es);
+      else if (!ok) say(correct.es);
+    };
+    if (razLine) speak(razLine, RAZ_VOICE).then(after);
+    else after();
   };
 
   return (
@@ -183,8 +190,8 @@ function ExchangeView({ ex, say, onNext }: { ex: Exchange; say: (t: string, slow
           )}
         </div>
       )}
-      {(ex.mode === 'choice' || ex.mode === 'listen') && <Choice ex={ex} disabled={!!result} onPick={(ok, correct) => finish(ok, correct)} />}
-      {ex.mode === 'build' && <Build ex={ex} disabled={!!result} onCheck={(ok) => finish(ok, ex.answer!)} />}
+      {(ex.mode === 'choice' || ex.mode === 'listen') && <Choice ex={ex} disabled={!!result} onPick={(ok, correct, said) => finish(ok, correct, said)} />}
+      {ex.mode === 'build' && <Build ex={ex} disabled={!!result} onCheck={(ok, said) => finish(ok, ex.answer!, said)} />}
       {ex.mode === 'order' && <Order ex={ex} disabled={!!result} onCheck={(ok) => finish(ok, { es: ex.lines!.map((l) => l.es).join(' '), hy: ex.lines!.map((l) => l.hy).join(' ') })} />}
       {result && (
         <div className={'feedback ' + (result.ok ? 'ok' : 'no')}>
@@ -230,7 +237,7 @@ function ExchangeView({ ex, say, onNext }: { ex: Exchange; say: (t: string, slow
   );
 }
 
-function Choice({ ex, disabled, onPick }: { ex: Exchange; disabled: boolean; onPick: (ok: boolean, correct: Tr) => void }) {
+function Choice({ ex, disabled, onPick }: { ex: Exchange; disabled: boolean; onPick: (ok: boolean, correct: Tr, said: string) => void }) {
   const opts = useMemo(() => shuffle(ex.options ?? []), [ex]);
   const [picked, setPicked] = useState<number | null>(null);
   const correct = opts.find((o) => o.ok)!;
@@ -239,7 +246,7 @@ function Choice({ ex, disabled, onPick }: { ex: Exchange; disabled: boolean; onP
       const n = Number(e.key);
       if (!disabled && n >= 1 && n <= opts.length) {
         setPicked(n - 1);
-        onPick(opts[n - 1].ok, correct);
+        onPick(opts[n - 1].ok, correct, opts[n - 1].es);
       }
     };
     window.addEventListener('keydown', h);
@@ -257,7 +264,7 @@ function Choice({ ex, disabled, onPick }: { ex: Exchange; disabled: boolean; onP
           disabled={disabled}
           onClick={() => {
             setPicked(k);
-            onPick(o.ok, correct);
+            onPick(o.ok, correct, o.es);
           }}
         >
           <span className="row">
@@ -273,7 +280,7 @@ function Choice({ ex, disabled, onPick }: { ex: Exchange; disabled: boolean; onP
   );
 }
 
-function Build({ ex, disabled, onCheck }: { ex: Exchange; disabled: boolean; onCheck: (ok: boolean) => void }) {
+function Build({ ex, disabled, onCheck }: { ex: Exchange; disabled: boolean; onCheck: (ok: boolean, said: string) => void }) {
   const words = useMemo(() => ex.answer!.es.replace(/[¿?¡!.,]/g, '').split(/\s+/).filter(Boolean), [ex]);
   const pool = useMemo(() => {
     const extra = shuffle((ex.chips ?? DISTRACTORS).filter((d) => !words.map((w) => w.toLowerCase()).includes(d))).slice(0, ex.chips ? 3 : 2);
@@ -284,7 +291,7 @@ function Build({ ex, disabled, onCheck }: { ex: Exchange; disabled: boolean; onC
   const sentence = placed.map((i) => pool[i].w).join(' ');
   const check = () => {
     const attempt = typed.trim() ? typed : sentence;
-    onCheck(norm(attempt) === norm(ex.answer!.es));
+    onCheck(norm(attempt) === norm(ex.answer!.es), attempt);
   };
   return (
     <div className="answers">

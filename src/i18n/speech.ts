@@ -56,28 +56,89 @@ export function pickVoice(gender: 'f' | 'm', index: number) {
   return candidates[index % candidates.length];
 }
 
-export function speak(text: string, opts: VoiceProfile & { slow?: boolean } = {}) {
-  if (!('speechSynthesis' in window)) return;
+let unlocked = false;
+let serial = 0;
+
+/** Call from a user gesture (tap/click/key): browsers only allow speech after one. */
+export function unlockSpeech() {
+  if (unlocked || !('speechSynthesis' in window)) return;
+  unlocked = true;
   try {
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'es-ES';
-    const gender = opts.gender ?? ((opts.voice ?? 0) % 2 === 0 ? 'f' : 'm');
-    const v = pickVoice(gender, Math.floor((opts.voice ?? 0) / 2));
-    if (v) {
-      u.voice = v;
-      u.lang = v.lang;
-    }
-    // keep pitch close to natural so the voice stays clear
-    u.pitch = Math.min(1.12, Math.max(0.88, opts.pitch ?? 1));
-    const base = Math.min(1.05, (opts.rate ?? 1) * settings.get().speechRate);
-    u.rate = opts.slow ? base * 0.6 : base;
-    u.volume = settings.get().voiceVolume;
+    loadVoices();
+    const u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0;
     window.speechSynthesis.speak(u);
   } catch {
-    /* speech not available */
+    /* ignore */
   }
 }
+
+function whenVoicesReady(): Promise<void> {
+  if (voices.length || !('speechSynthesis' in window)) return Promise.resolve();
+  return new Promise((res) => {
+    const t = setTimeout(res, 1200);
+    window.speechSynthesis.addEventListener?.(
+      'voiceschanged',
+      () => {
+        loadVoices();
+        clearTimeout(t);
+        res();
+      },
+      { once: true },
+    );
+  });
+}
+
+/** Speak Spanish text. Resolves when the sentence has finished (or failed). */
+export function speak(text: string, opts: VoiceProfile & { slow?: boolean } = {}): Promise<void> {
+  if (!('speechSynthesis' in window) || !text.trim()) return Promise.resolve();
+  const id = ++serial;
+  const synth = window.speechSynthesis;
+  const wasBusy = synth.speaking || synth.pending;
+  try {
+    synth.cancel();
+  } catch {
+    /* ignore */
+  }
+  return whenVoicesReady().then(
+    () =>
+      new Promise<void>((resolve) => {
+        // Chrome drops an utterance queued right after cancel(): wait a moment
+        setTimeout(
+          () => {
+            if (id !== serial) return resolve(); // a newer sentence replaced this one
+            try {
+              const u = new SpeechSynthesisUtterance(text);
+              u.lang = 'es-ES';
+              const gender = opts.gender ?? ((opts.voice ?? 0) % 2 === 0 ? 'f' : 'm');
+              const v = pickVoice(gender, Math.floor((opts.voice ?? 0) / 2));
+              if (v) {
+                u.voice = v;
+                u.lang = v.lang;
+              }
+              u.pitch = Math.min(1.12, Math.max(0.88, opts.pitch ?? 1));
+              const base = Math.min(1.05, (opts.rate ?? 1) * settings.get().speechRate);
+              u.rate = opts.slow ? base * 0.6 : base;
+              u.volume = settings.get().voiceVolume;
+              const done = () => resolve();
+              u.onend = done;
+              u.onerror = done;
+              // safety: some browsers never fire onend
+              setTimeout(done, 1500 + text.length * 110 * (opts.slow ? 1.7 : 1));
+              synth.resume();
+              synth.speak(u);
+            } catch {
+              resolve();
+            }
+          },
+          wasBusy ? 80 : 0,
+        );
+      }),
+  );
+}
+
+/** RAZ's own voice (male, natural). */
+export const RAZ_VOICE: VoiceProfile = { voice: 1, pitch: 1.04, rate: 0.95 };
 
 export function stopSpeaking() {
   try {
