@@ -315,6 +315,16 @@ export function SettingsPanel() {
 
 export function MinigamesPanel({ inMenu }: { inMenu?: boolean }) {
   const best = useStore(game, (s) => s.minigames);
+  const play = (m: (typeof MINIGAMES)[number]) => {
+    if (inMenu && m.kind === '3d') {
+      // load the 3D world first, then start the game there
+      if (!game.get().started) game.set({ ...newGame(), activeMission: null });
+      queueMinigame(m.id);
+      sfx.ensure();
+      ui.set({ screen: 'game', modal: null });
+    } else if (inMenu) openModal({ type: 'minigame', id: m.id });
+    else startMinigame(m.id);
+  };
   return (
     <div>
       {inMenu && (
@@ -327,7 +337,15 @@ export function MinigamesPanel({ inMenu }: { inMenu?: boolean }) {
       </p>
       <div className="grid c3">
         {MINIGAMES.map((m) => (
-          <div key={m.id} className="card mg-card" style={{ ['--mg' as string]: m.color }}>
+          <div
+            key={m.id}
+            className="card mg-card"
+            role="button"
+            tabIndex={0}
+            style={{ ['--mg' as string]: m.color, cursor: 'pointer' }}
+            onClick={() => play(m)}
+            onKeyDown={(ev) => ev.key === 'Enter' && play(m)}
+          >
             <div className="row between">
               <div className="row" style={{ gap: 10 }}>
                 <span className="mg-icon sm">
@@ -338,26 +356,14 @@ export function MinigamesPanel({ inMenu }: { inMenu?: boolean }) {
               {m.kind === '3d' && <span className="pill">3D</span>}
             </div>
             <div className="small" style={{ margin: '6px 0', minHeight: 34 }}>
-              <T {...m.desc} />
+              {m.desc.es} <TBadge {...m.desc} />
             </div>
             <div className="row between">
               <span className="small muted">
-                <T {...UI.best} />: {best[m.id] ?? 0}
+                {UI.best.es}: {best[m.id] ?? 0}
               </span>
-              <TButton
-                {...UI.play}
-                className="sm primary"
-                onClick={() => {
-                  if (inMenu && m.kind === '3d') {
-                    // load the 3D world first, then start the game there
-                    if (!game.get().started) game.set({ ...newGame(), activeMission: null });
-                    queueMinigame(m.id);
-                    sfx.ensure();
-                    ui.set({ screen: 'game', modal: null });
-                  } else if (inMenu) openModal({ type: 'minigame', id: m.id });
-                  else startMinigame(m.id);
-                }}
-              />
+              {/* the whole card starts the game; this button is just the visible target */}
+              <TButton {...UI.play} className="sm primary" />
             </div>
           </div>
         ))}

@@ -891,6 +891,20 @@ export function startMinigame(id: string) {
   }
   closeModal();
   runner.minigame3d = { id, start: performance.now() };
+  // clear start screen so it's obvious the 3D game has begun
+  const how: Record<string, Tr> = {
+    penalty: t('Chuta con clic izquierdo o K. ¡Marca 5 penaltis!', 'Հարվածիր ձախ սեղմումով կամ K-ով։ Խփիր 5 պենալտի։'),
+    goalkeeper: t('Muévete con A y D y para los tiros. ¡Para 5!', 'Շարժվիր A-ով և D-ով և կասեցրու հարվածները։ Կասեցրու 5-ը։'),
+    carrace: t('Pasa por todos los aros naranjas antes de que acabe el tiempo.', 'Անցիր բոլոր նարնջագույն օղակներով, մինչև ժամանակը կավարտվի։'),
+    bikerace: t('Pedalea y pasa por todos los aros naranjas.', 'Ոտնակիր և անցիր բոլոր նարնջագույն օղակներով։'),
+    delivery: t('Lee adónde llevar el pedido y búscalo en el mapa (M).', 'Կարդա՝ ուր տանել պատվերը, և գտիր քարտեզում (M)։'),
+    treasure: t('Lee la pista y busca el lugar en el mapa (M).', 'Կարդա հուշումը և գտիր վայրը քարտեզում (M)։'),
+  };
+  const h = how[id];
+  if (h) {
+    banner(`${mg.name.es}: ¡empieza! ${h.es}`, `${mg.name.hy}՝ սկսվում է։ ${h.hy}`, 'level', 6000);
+    speak(`¡Empieza ${mg.name.es}! ${h.es}`);
+  }
   if (id === 'penalty') e.startFootball('penalty', 5);
   else if (id === 'goalkeeper') e.startFootball('goalkeeper', 5);
   else {
