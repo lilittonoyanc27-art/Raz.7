@@ -21,9 +21,9 @@ interface Spec {
 }
 
 export const SPECS: Record<VehicleType, Spec> = {
-  bike_city: { name: { es: 'bicicleta', hy: 'հեծանիվ' }, max: 9, reverse: 2, accel: 4, brake: 9, steer: 2.2, size: [0.3, 0.55, 0.9], pose: 'bike', seat: [0, 0.1, -0.15], kind: 'bike', color: '#ff6a00' },
-  bike_mtb: { name: { es: 'bicicleta de montaña', hy: 'լեռնային հեծանիվ' }, max: 11, reverse: 2, accel: 5, brake: 10, steer: 2.4, size: [0.3, 0.55, 0.9], pose: 'bike', seat: [0, 0.12, -0.15], kind: 'bike', color: '#2b2e35' },
-  scooter: { name: { es: 'patinete eléctrico', hy: 'էլեկտրական սքութեր' }, max: 8, reverse: 1.5, accel: 5, brake: 8, steer: 2.6, size: [0.25, 0.55, 0.6], pose: 'bike', seat: [0, -0.35, 0], kind: 'bike', color: '#16181c' },
+  bike_city: { name: { es: 'bicicleta', hy: 'հեծանիվ' }, max: 16, reverse: 3, accel: 7, brake: 12, steer: 2.2, size: [0.3, 0.55, 0.9], pose: 'bike', seat: [0, 0.1, -0.15], kind: 'bike', color: '#ff6a00' },
+  bike_mtb: { name: { es: 'bicicleta de montaña', hy: 'լեռնային հեծանիվ' }, max: 19, reverse: 3, accel: 8, brake: 13, steer: 2.4, size: [0.3, 0.55, 0.9], pose: 'bike', seat: [0, 0.12, -0.15], kind: 'bike', color: '#2b2e35' },
+  scooter: { name: { es: 'patinete eléctrico', hy: 'էլեկտրական սքութեր' }, max: 14, reverse: 2, accel: 8, brake: 11, steer: 2.6, size: [0.25, 0.55, 0.6], pose: 'bike', seat: [0, -0.35, 0], kind: 'bike', color: '#16181c' },
   car_compact: { name: { es: 'coche', hy: 'մեքենա' }, max: 18, reverse: 5, accel: 6, brake: 14, steer: 1.6, size: [0.9, 0.7, 2.0], pose: 'car', seat: [-0.38, -0.25, 0.1], kind: 'car', color: '#2f5fa7' },
   car_sport: { name: { es: 'coche deportivo', hy: 'սպորտային մեքենա' }, max: 28, reverse: 6, accel: 11, brake: 18, steer: 1.8, size: [0.95, 0.6, 2.15], pose: 'car', seat: [-0.4, -0.33, 0.0], kind: 'car', color: '#ff6a00' },
   taxi: { name: { es: 'taxi', hy: 'տաքսի' }, max: 17, reverse: 5, accel: 6, brake: 14, steer: 1.6, size: [0.9, 0.75, 2.1], pose: 'car', seat: [-0.38, -0.25, 0.1], kind: 'car', color: '#f4f4f4' },
@@ -489,14 +489,25 @@ export class Vehicle {
     this.ctrl.computeColliderMovement(this.collider, desired, undefined, groups(GROUP.VEHICLE, GROUP.STATIC | GROUP.VEHICLE | GROUP.NPC | GROUP.BALL));
     const mv = this.ctrl.computedMovement();
     if (this.ctrl.computedGrounded()) this.vy = 0;
+    // a real hit is a contact with a wall/obstacle (not the ground under the wheels)
+    let wall = false;
+    for (let i = 0; i < this.ctrl.numComputedCollisions(); i++) {
+      const c = this.ctrl.computedCollision(i);
+      if (c && Math.abs(c.normal1.y) < 0.6) wall = true;
+    }
     const want = Math.hypot(desired.x, desired.z);
-    const got = Math.hypot(mv.x, mv.z);
+    let got = Math.hypot(mv.x, mv.z);
     let crashed = false;
-    if (want > 0.02 && got < want * 0.35 && Math.abs(this.speed) > 4) {
+    if (wall && want > 0.02 && got < want * 0.35 && Math.abs(this.speed) > 4) {
       crashed = Math.abs(this.speed) > 7;
       this.speed *= -0.25;
-    } else if (want > 0.001 && got < want * 0.9) {
+    } else if (wall && want > 0.001 && got < want * 0.9) {
       this.speed *= 0.97;
+    } else if (!wall && want > 0.001 && got < want * 0.6) {
+      // snagged on flat ground for a frame: keep rolling smoothly
+      mv.x = desired.x;
+      mv.z = desired.z;
+      got = want;
     }
     this.pos.x += mv.x;
     this.pos.y += mv.y;

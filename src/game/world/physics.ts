@@ -36,6 +36,20 @@ export class Physics {
   remove(c: RAPIER.Collider) {
     this.world.removeCollider(c, false);
   }
+  /** Ray against large static geometry only (walls, buildings, ground) —
+   * thin props like trees, lamp posts, benches and kerbs are ignored so the
+   * camera doesn't jump towards the player when passing them. */
+  cameraRay(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, max: number) {
+    const r = new RAPIER.Ray({ x: ox, y: oy, z: oz }, { x: dx, y: dy, z: dz });
+    const hit = this.world.castRay(r, max, true, undefined, groups(0xffff, GROUP.STATIC), undefined, undefined, (c) => {
+      const sh = c.shape as RAPIER.Cuboid;
+      if (sh.type !== RAPIER.ShapeType.Cuboid) return false;
+      const he = sh.halfExtents;
+      return he.y > 0.45 && Math.max(he.x, he.z) > 1.2;
+    });
+    return hit ? hit.timeOfImpact : null;
+  }
+
   /** Ray against static geometry only. Returns distance or null. */
   ray(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, max: number) {
     const r = new RAPIER.Ray({ x: ox, y: oy, z: oz }, { x: dx, y: dy, z: dz });

@@ -66,7 +66,7 @@ export class CameraRig {
 
   setInterior(on: boolean) {
     this.interior = on;
-    this.maxDist = on ? 4 : this.vehicleMode ? 14 : 11;
+    this.maxDist = this.vehicleMode ? 14 : 11;
     this.applyView();
   }
 
@@ -96,8 +96,8 @@ export class CameraRig {
       this.yaw = angleLerp(this.yaw, followHeading + Math.PI, 1 - Math.exp(-dt * 4));
       this.pitch = THREE.MathUtils.lerp(this.pitch, 0.05, 1 - Math.exp(-dt * 2));
     }
-    const wantFov = 70 + Math.min(12, Math.abs(speed) * 0.4);
-    this.fov = THREE.MathUtils.lerp(this.fov, wantFov, 1 - Math.exp(-dt * 4));
+    const wantFov = 70;
+    this.fov = THREE.MathUtils.lerp(this.fov, wantFov, 1 - Math.exp(-dt * 6));
     this.cam.fov = this.fov;
     this.cam.updateProjectionMatrix();
     const cp = Math.cos(this.pitch);
@@ -126,8 +126,7 @@ export class CameraRig {
     if (followHeading !== null && this.idleT > (foot ? 0.35 : 1.2) && Math.abs(speed) > (foot ? 0.2 : 1.5)) {
       const behind = followHeading + Math.PI;
       this.yaw = angleLerp(this.yaw, speed < 0 ? followHeading : behind, 1 - Math.exp(-dt * (foot ? 3.2 : 2.2)));
-      const wantPitch = foot ? (this.view === 2 ? 0.08 : 0.12) : 0.22;
-      this.pitch = THREE.MathUtils.lerp(this.pitch, wantPitch, 1 - Math.exp(-dt * 2));
+      if (!foot) this.pitch = THREE.MathUtils.lerp(this.pitch, 0.22, 1 - Math.exp(-dt * 2));
     }
     this.dist = THREE.MathUtils.lerp(this.dist, this.targetDist, 1 - Math.exp(-dt * 8));
 
@@ -140,18 +139,19 @@ export class CameraRig {
       const ahead = Math.min(foot ? 2.5 : 4, Math.abs(speed) * (foot ? 0.9 : 0.25)) * Math.sign(speed);
       this.lookAhead = THREE.MathUtils.lerp(this.lookAhead, ahead, 1 - Math.exp(-dt * 2));
     } else this.lookAhead = THREE.MathUtils.lerp(this.lookAhead, 0, 1 - Math.exp(-dt * 2));
+    // the look-ahead only turns the view; it never moves the camera closer
+    const aheadOff = new THREE.Vector3();
     if (followHeading !== null || Math.abs(this.lookAhead) > 0.01) {
       const h = followHeading ?? this.lastHeading;
       this.lastHeading = h;
-      pivot.x += Math.sin(h) * this.lookAhead;
-      pivot.z += Math.cos(h) * this.lookAhead;
+      aheadOff.set(Math.sin(h) * this.lookAhead, 0, Math.cos(h) * this.lookAhead);
     }
-    const side = this.phys.ray(target.x, target.y, target.z, right.x, 0, right.z, this.shoulderNow + 0.3);
+    const side = this.phys.cameraRay(target.x, target.y, target.z, right.x, 0, right.z, this.shoulderNow + 0.3);
     pivot.addScaledVector(right, side !== null ? Math.max(0, side - 0.3) : this.shoulderNow);
     this.look.lerp(pivot, 1 - Math.exp(-dt * 18));
     // dynamic field of view: wider at speed (driving / sprinting)
-    const wantFov = 56 + Math.min(14, Math.abs(speed) * 0.45);
-    this.fov = THREE.MathUtils.lerp(this.fov, wantFov, 1 - Math.exp(-dt * 3));
+    const wantFov = 58;
+    this.fov = THREE.MathUtils.lerp(this.fov, wantFov, 1 - Math.exp(-dt * 6));
     if (Math.abs(this.cam.fov - this.fov) > 0.05) {
       this.cam.fov = this.fov;
       this.cam.updateProjectionMatrix();
@@ -162,7 +162,7 @@ export class CameraRig {
     const dir = desired.clone().sub(this.look);
     const len = dir.length();
     dir.normalize();
-    const hit = this.phys.ray(this.look.x, this.look.y, this.look.z, dir.x, dir.y, dir.z, len);
+    const hit = this.phys.cameraRay(this.look.x, this.look.y, this.look.z, dir.x, dir.y, dir.z, len);
     let d = len;
     if (hit !== null) d = Math.max(0.4, hit - 0.25);
     const final = this.look.clone().addScaledVector(dir, d);
@@ -171,6 +171,6 @@ export class CameraRig {
     if (d < this.pos.distanceTo(this.look) - 0.05) this.pos.copy(final);
     else this.pos.lerp(final, 1 - Math.exp(-dt * 14));
     this.cam.position.copy(this.pos);
-    this.cam.lookAt(this.look);
+    this.cam.lookAt(this.look.clone().add(aheadOff));
   }
 }

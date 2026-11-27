@@ -107,7 +107,7 @@ export function buildInteriors(scene: THREE.Scene, phys: Physics, shadows: boole
     ceil.rotation.x = Math.PI / 2;
     ceil.position.y = H;
     g.add(ceil);
-    phys.addBox(ox, H + 0.2, oz, k.w / 2, 0.2, k.d / 2);
+    phys.addBox(ox, H + 0.5, oz, k.w / 2, 0.5, k.d / 2);
     // solid floor (the city ground does not reach the interiors)
     phys.addBox(ox, -0.25, oz, k.w / 2 + 1, 0.25, k.d / 2 + 1);
     // ceiling lights strips
