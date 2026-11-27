@@ -70,6 +70,7 @@ function MainMenu() {
         <div className="tagline">
           <T es={UI.tagline.es} hy={UI.tagline.hy} />
         </div>
+        <div className="menu-list">
         {items.map((it) => (
           <button key={it.tr.es} className="menu-btn" disabled={it.disabled} onClick={it.on}>
             <span className="row">
@@ -79,6 +80,7 @@ function MainMenu() {
             <TBadge es={it.tr.es} hy={it.tr.hy} />
           </button>
         ))}
+        </div>
         {confirm && (
           <div className="card" style={{ marginTop: 10 }}>
             <T es={UI.confirmNew.es} hy={UI.confirmNew.hy} as="p" />
@@ -122,7 +124,7 @@ function MainMenu() {
 function MenuHero() {
   return (
     <div className="menu-hero">
-      <svg viewBox="0 0 800 700" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+      <svg viewBox="0 0 800 700" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
         <defs>
           <linearGradient id="g7" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stopColor="#ff8a33" />
@@ -134,10 +136,10 @@ function MenuHero() {
             <path key={i} d={`M ${-100 + i * 70} 700 L ${200 + i * 70} 0`} />
           ))}
         </g>
-        <text x="420" y="560" fontSize="620" fontWeight="900" fill="url(#g7)" opacity="0.95" fontFamily="Inter, sans-serif" textAnchor="middle">
+        <text x="400" y="560" fontSize="600" fontWeight="900" fill="url(#g7)" opacity="0.95" fontFamily="Inter, sans-serif" textAnchor="middle">
           7
         </text>
-        <text x="420" y="640" fontSize="40" fontWeight="900" fill="#fff" letterSpacing="18" textAnchor="middle" fontFamily="Inter, sans-serif">
+        <text x="400" y="650" fontSize="34" fontWeight="900" fill="#fff" letterSpacing="6" textAnchor="middle" fontFamily="Inter, sans-serif" textLength="700" lengthAdjust="spacingAndGlyphs">
           VALENCIA · MADRID · BARCELONA
         </text>
         <circle cx="610" cy="560" r="46" fill="#fff" />
